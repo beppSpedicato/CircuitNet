@@ -113,6 +113,7 @@ def train():
     # Initialize model parameters
     model = build_model(arg_dict)
     if not arg_dict['cpu']:
+        torch.cuda.set_device(arg_dict.get('gpu', 0))
         model = model.cuda()
     
     # Build loss

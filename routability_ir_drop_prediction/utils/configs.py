@@ -20,6 +20,8 @@ class Parser(object):
         self.parser.add_argument('--plot_roc', action='store_true')
         self.parser.add_argument('--arg_file', default=None)
         self.parser.add_argument('--cpu', action='store_true')
+        # Select a specific CUDA device index (e.g. --gpu 1). Ignored when --cpu is set.
+        self.parser.add_argument('--gpu', type=int, default=0)
         self.get_remainder()
         
     def get_remainder(self):
