@@ -4,7 +4,6 @@ import torch
 import torch.nn as nn
 
 from mmengine.model import constant_init, kaiming_init
-from mmcv.utils.parrots_wrapper import _BatchNorm
 
 import torch
 import torch.nn as nn
