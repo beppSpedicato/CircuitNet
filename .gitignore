@@ -1,4 +1,4 @@
-routability&ir_drop_prediction/work_dir/*
+routability_ir_drop_prediction/work_dir/*
 
 net_delay_prediction/checkpoints/*
 
@@ -14,3 +14,8 @@ feature_extraction/images/
 feature_extraction/LEF/circuitnet.lef
 
 .venv/
+**/drc_all/
+**/routability_features/
+**/ir_drop_features/
+**/routability_features_decompressed/
+

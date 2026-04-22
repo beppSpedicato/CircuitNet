@@ -77,6 +77,20 @@ DGL is also not included in requirement.txt, and it is required for net delay pr
 
 Our experiments run on Python 3.9 and PyTorch 1.11. Other versions should work but are not tested.
 
+### Edit 20260422
+This version now support python 3.11, so the requirements.txt has been updated. Use to install pytorch ==2.01
+
+To install packages:
+- pip install -U pip setuptools wheel
+- pip install "setuptools<70"
+
+To install mmcv use (require torch installed)
+- pip install openmim
+- mim install mmcv
+
+To view .npy images in vscode use:
+https://marketplace.visualstudio.com/items?itemName=Kiameow.npy-image-preview
+
 ## Congestion, DRC, IR drop prediction
 
 ### Data Preparation
