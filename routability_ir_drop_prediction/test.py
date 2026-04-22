@@ -13,6 +13,7 @@ from datasets.build_dataset import build_dataset
 from utils.metrics import build_metric, build_roc_prc_metric
 from models.build_model import build_model
 from utils.configs import Parser
+import torch
 
 
 def test():
@@ -34,6 +35,7 @@ def test():
     # Initialize model parameters
     model = build_model(arg_dict)
     if not arg_dict['cpu']:
+        torch.cuda.set_device(arg_dict.get('gpu', 0))
         model = model.cuda()
 
     # Build metrics

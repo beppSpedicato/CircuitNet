@@ -5,6 +5,8 @@ from inspect import getfullargspec
 
 import os
 import os.path as osp
+import pathlib
+from zipfile import Path
 import cv2
 import numpy as np
 import torch
@@ -16,7 +18,6 @@ import csv
 from sklearn.metrics import accuracy_score, roc_curve, confusion_matrix
 from scipy.interpolate import make_interp_spline
 from functools import partial
-from mmcv import scandir
 
 from scipy.stats import wasserstein_distance
 from skimage.metrics import normalized_root_mse
@@ -256,7 +257,7 @@ def calculated_score(threshold_idx=None,
 def multi_process_score(out_name=None, threshold=0.0, label_path=None, save_path=None):
     uid = str(uuid.uuid4())
     suid = ''.join(uid.split('-'))
-    temp_path = f'./{suid}'
+    temp_path = f'./work_dir/{suid}'
 
     psutil.cpu_percent(None)
     time.sleep(0.5)
@@ -264,11 +265,11 @@ def multi_process_score(out_name=None, threshold=0.0, label_path=None, save_path
     pool = mul.Pool(int(mul.cpu_count()*(1-psutil.cpu_percent(None)/100.0)))
     # pool = mul.Pool(1)
 
-    preds = scandir(os.path.join(save_path, 'test_result'), suffix='npy', recursive=True)
+    preds = [str(p).split('/')[-1] for p in pathlib.Path(save_path, "test_result").rglob("*.npy")]  
     preds = [v for v in preds]
 
     if not os.path.exists(temp_path):
-        os.makedirs(temp_path)
+        os.makedirs(temp_path, exist_ok=True)
 
     threshold_list = np.linspace(0, 1, endpoint=False, num=200)
     
