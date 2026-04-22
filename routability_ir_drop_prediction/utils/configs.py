@@ -13,7 +13,7 @@ class Parser(object):
         self.parser.add_argument('--task', default='congestion_gpdl')
         self.parser.add_argument('--save_path', default='work_dir/congestion_gpdl/')
         self.parser.add_argument('--pretrained', default=None)
-        self.parser.add_argument('--max_iters', default=2000)
+        self.parser.add_argument('--max_iters', default=200000)
         self.parser.add_argument('--plot_roc', action='store_true')
         self.parser.add_argument('--arg_file', default=None)
         self.parser.add_argument('--cpu', action='store_true')
@@ -23,7 +23,7 @@ class Parser(object):
         
     def get_remainder(self):
         if self.parser.parse_args().task == 'congestion_gpdl':
-            self.parser.add_argument('--dataroot', default='../../training_set/congestion')
+            self.parser.add_argument('--dataroot', default='./training_set/congestion')
             self.parser.add_argument('--ann_file_train', default='./files/train_N28.csv')
             self.parser.add_argument('--ann_file_test', default='./files/test_N28.csv')
             self.parser.add_argument('--dataset_type', default='CongestionDataset')
@@ -39,7 +39,7 @@ class Parser(object):
             self.parser.add_argument('--eval-metric', default=['NRMS', 'SSIM', 'EMD'])
 
         elif self.parser.parse_args().task == 'drc_routenet':
-            self.parser.add_argument('--dataroot', default='./drc_all/DRC')
+            self.parser.add_argument('--dataroot', default='./training_set/DRC')
             self.parser.add_argument('--ann_file_train', default='./files/train_N28.csv')
             self.parser.add_argument('--ann_file_test', default='./files/test_N28.csv')
             self.parser.add_argument('--dataset_type', default='DRCDataset')

@@ -15,7 +15,9 @@ feature_extraction/LEF/circuitnet.lef
 
 .venv/
 **/drc_all/
+**/training_set/
 **/routability_features/
 **/ir_drop_features/
 **/routability_features_decompressed/
+**/work_dir/
 
