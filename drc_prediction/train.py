@@ -16,6 +16,12 @@ import hydra
 import omegaconf
 
 
+def features_to_device(feature, label, CFG):
+    if CFG.get('cpu', False):
+        return feature, label
+    else:
+        return feature.cuda(), label.cuda()
+
 def checkpoint(model, epoch, save_path, run: Run):
     if not os.path.exists(save_path):
         os.makedirs(save_path)
@@ -89,7 +95,7 @@ class CosineRestartLr(object):
         ]
 
 
-def validate(model, loss_fn, metrics, val_loader, device):
+def validate(model, loss_fn, metrics, val_loader, CFG):
     model.eval()
 
     avg_metrics = {k: 0.0 for k in metrics.keys()}
@@ -98,8 +104,7 @@ def validate(model, loss_fn, metrics, val_loader, device):
 
     with torch.no_grad():
         for feature, label, _ in val_loader:
-            input = feature.to(device)
-            target = label.to(device)
+            input, target = features_to_device(feature, label, CFG)
 
             prediction = model(input)
             avg_loss += loss_fn(prediction, target).item()
@@ -147,10 +152,10 @@ def train(CFG: omegaconf.dictconfig.DictConfig):
 
     print('===> Building model')
     # Initialize model parameters
+    CFG['test_mode'] = False
     model = build_model(CFG)
 
-    # set device
-    device = torch.device('cpu' if CFG.get('cpu', False) else 'cuda')
+    # Set Device
     if not CFG.get('cpu', False):
         torch.cuda.set_device(CFG.get('gpu', 0))
         model = model.cuda()
@@ -172,13 +177,12 @@ def train(CFG: omegaconf.dictconfig.DictConfig):
     iter_num = 0
     print_freq = 100
     save_freq = CFG['save_freq']
-    
     epoch = 0
 
     while iter_num < CFG['max_iters']:
         with tqdm(total=print_freq) as bar:
             for feature, label, _ in train_loader:
-                input, target = feature.to(device), label.to(device)
+                input, target = features_to_device(feature, label, CFG)
 
                 regular_lr = cosine_lr.get_regular_lr(iter_num)
                 cosine_lr._set_lr(optimizer, regular_lr)
@@ -220,7 +224,7 @@ def train(CFG: omegaconf.dictconfig.DictConfig):
             checkpoint(model, iter_num, CFG['save_path'], run)
 
         if epoch % CFG.get('eval_freq_epochs', 1) == 0:
-            val_loss, val_metrics = validate(model, loss, metrics, val_loader, device)
+            val_loss, val_metrics = validate(model, loss, metrics, val_loader, CFG)
             run.track(
                 value=val_loss,
                 name="Val Pixel Loss",
