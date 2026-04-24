@@ -20,4 +20,6 @@ feature_extraction/LEF/circuitnet.lef
 **/ir_drop_features/
 **/routability_features_decompressed/
 **/work_dir/
-
+**/work_dirs/
+**/.aim/
+**/multirun/
