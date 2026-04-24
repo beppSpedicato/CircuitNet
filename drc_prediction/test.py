@@ -49,8 +49,16 @@ def test(CFG):
 
             prediction = model(input)
             for metric, metric_func in metrics.items():
-                if not metric_func(target.cpu(), prediction.squeeze(1).cpu()) == 1:
-                    avg_metrics[metric] += metric_func(target.cpu(), prediction.squeeze(1).cpu())
+                metric_v = metric_func(target.cpu(), prediction.squeeze(1).cpu())
+                if metric_v != 1:
+                    metric_v = float(metric_v)
+                    avg_metrics[metric] += metric_v
+                    # Track per-test metric value as a distribution
+                    run.track(
+                        value=metric_v,
+                        name=f"Test {metric} (dist)",
+                        context={'subset': 'test', 'aggregation': 'distribution'},
+                    )
 
             if CFG['plot_roc']:
                 save_path = osp.join(CFG['save_path'], 'test_result')
