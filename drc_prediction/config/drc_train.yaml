@@ -4,7 +4,8 @@ save_path: ./work_dirs/RouteNet_N28
 
 # Train
 max_iters: 200000
-ann_file_train: ./files/train_N28.csv
+ann_file_train: ./files/train_N28_train.csv
+ann_file_val: ./files/train_N28_val.csv
 model_type: RouteNet
 batch_size: 8
 in_channels: 9
@@ -17,6 +18,10 @@ eval_metric:
   - NRMS
   - SSIM
 save_freq: 10000
+
+# Validation
+# How often to run validation (in epochs, where 1 epoch == print_freq iters)
+eval_freq_epochs: 1
 
 # Test
 ann_file_test: ./files/test_N28.csv

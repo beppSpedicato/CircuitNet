@@ -27,8 +27,29 @@ class IterLoader:
 
 
 def build_dataset(opt):
+    """Build a dataloader from options.
+
+    Expected fields in opt:
+      - ann_file: path to csv
+      - dataroot: dataset root
+      - test_mode: bool
+      - batch_size: int (train only)
+
+    Returns:
+      - test_mode=True: torch.utils.data.DataLoader
+      - test_mode=False: IterLoader over a DataLoader (infinite stream)
+    """
     dataset = DRCDataset(**opt)
     if opt['test_mode']:
         return DataLoader(dataset=dataset, num_workers=1, batch_size=1, shuffle=False)
     else:
-        return IterLoader(DataLoader(dataset=dataset, num_workers=16, batch_size=opt.pop('batch_size'), shuffle=True, drop_last=True, pin_memory=True))
+        return IterLoader(
+            DataLoader(
+                dataset=dataset,
+                num_workers=16,
+                batch_size=opt.pop('batch_size'),
+                shuffle=True,
+                drop_last=True,
+                pin_memory=True,
+            )
+        )

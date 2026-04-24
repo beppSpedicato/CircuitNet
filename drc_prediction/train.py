@@ -7,6 +7,7 @@ from tqdm import tqdm
 
 from datasets.build_dataset import build_dataset
 from utils.losses import build_loss
+from utils.metrics import build_metric
 from models.build_model import build_model
 from math import cos, pi
 import os
@@ -87,6 +88,40 @@ class CosineRestartLr(object):
             self.base_lr = [group['initial_lr'] for group in optimizer.param_groups  # type: ignore
         ]
 
+
+def validate(model, loss_fn, metrics, val_loader, device):
+    model.eval()
+
+    avg_metrics = {k: 0.0 for k in metrics.keys()}
+    avg_loss = 0.0
+    n = 0
+
+    with torch.no_grad():
+        for feature, label, _ in val_loader:
+            input = feature.to(device)
+            target = label.to(device)
+
+            prediction = model(input)
+            avg_loss += loss_fn(prediction, target).item()
+
+            pred_cpu = prediction.squeeze(1).detach().cpu()
+            tgt_cpu = target.cpu()
+            for name, fn in metrics.items():
+                v = fn(tgt_cpu, pred_cpu)
+                if v != 1:
+                    avg_metrics[name] += float(v)
+
+            n += 1
+
+    if n > 0:
+        avg_loss /= n
+        for k in avg_metrics:
+            avg_metrics[k] /= n
+
+    model.train()
+    return avg_loss, avg_metrics
+
+
 @hydra.main(version_base=None, config_path="./config", config_name="drc_train")
 def train(CFG: omegaconf.dictconfig.DictConfig):
     run = Run(experiment="drc_centralized_train")
@@ -96,22 +131,35 @@ def train(CFG: omegaconf.dictconfig.DictConfig):
         os.makedirs(CFG.save_path)
 
     CFG = dict(CFG)
-    CFG['ann_file'] = CFG['ann_file_train']
-    CFG['test_mode'] = False
 
     print('===> Loading datasets')
-    # Initialize dataset
-    dataset = build_dataset(CFG)
+    # Train loader (iterable infinite stream)
+    train_opt = dict(CFG)
+    train_opt['ann_file'] = CFG['ann_file_train']
+    train_opt['test_mode'] = False
+    train_loader = build_dataset(train_opt)
+
+    # Val loader (finite, deterministic)
+    val_opt = dict(CFG)
+    val_opt['ann_file'] = CFG['ann_file_val']
+    val_opt['test_mode'] = True
+    val_loader = build_dataset(val_opt)
 
     print('===> Building model')
     # Initialize model parameters
     model = build_model(CFG)
+
+    # set device
+    device = torch.device('cpu' if CFG.get('cpu', False) else 'cuda')
     if not CFG.get('cpu', False):
         torch.cuda.set_device(CFG.get('gpu', 0))
         model = model.cuda()
     
     # Build loss
     loss = build_loss(CFG)
+
+    # Build validation metrics
+    metrics = {k: build_metric(k) for k in CFG['eval_metric']}
 
     # Build Optimzer
     optimizer = optim.AdamW(model.parameters(), lr=CFG['lr'],  betas=(0.9, 0.999), weight_decay=CFG['weight_decay'])
@@ -129,11 +177,8 @@ def train(CFG: omegaconf.dictconfig.DictConfig):
 
     while iter_num < CFG['max_iters']:
         with tqdm(total=print_freq) as bar:
-            for feature, label, _ in dataset:        
-                if CFG.get('cpu', False):
-                    input, target = feature, label
-                else:
-                    input, target = feature.cuda(), label.cuda()
+            for feature, label, _ in train_loader:
+                input, target = feature.to(device), label.to(device)
 
                 regular_lr = cosine_lr.get_regular_lr(iter_num)
                 cosine_lr._set_lr(optimizer, regular_lr)
@@ -173,6 +218,27 @@ def train(CFG: omegaconf.dictconfig.DictConfig):
         
         if iter_num % save_freq == 0:
             checkpoint(model, iter_num, CFG['save_path'], run)
+
+        if epoch % CFG.get('eval_freq_epochs', 1) == 0:
+            val_loss, val_metrics = validate(model, loss, metrics, val_loader, device)
+            run.track(
+                value=val_loss,
+                name="Val Pixel Loss",
+                context={'subset': 'val'},
+                step=epoch,
+            )
+            for k, v in val_metrics.items():
+                run.track(
+                    value=v,
+                    name=f"Val {k}",
+                    context={'subset': 'val'},
+                    step=epoch,
+                )
+            print(
+                "===> Val[epoch {}]: loss {:.4f} ".format(
+                    epoch, val_loss
+                ) + " ".join([f"{k}:{val_metrics[k]:.4f}" for k in val_metrics])
+            )
 
         epoch += 1
         epoch_loss = 0
