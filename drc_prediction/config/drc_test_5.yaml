@@ -1,0 +1,21 @@
+gpu: 0
+dataroot: ./training_set/DRC
+save_path: ./work_dirs/RouteNet_N28_expanded_metrics
+max_iters: 200000
+ann_file_train: ./files/train_N28.csv
+model_type: RouteNet
+batch_size: 8
+in_channels: 9
+out_channels: 1
+lr: 0.0002
+weight_decay: 0.0001
+loss_type: MSELoss
+threshold: 0.1
+eval_metric:
+- NRMS
+- SSIM
+- PSNR
+- EMD
+save_freq: 10000
+ann_file_test: ./files/test_N28.csv
+plot_roc: true
