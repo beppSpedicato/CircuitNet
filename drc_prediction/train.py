@@ -14,13 +14,15 @@ import os
 from aim import Run
 import hydra
 import omegaconf
-
+from utils.seed import set_random_seed
 
 def features_to_device(feature, label, CFG):
     if CFG.get('cpu', False):
         return feature, label
     else:
-        return feature.cuda(), label.cuda()
+        gpu_id = CFG.get('gpu_id', CFG['gpu'])  # default GPU 0
+        device = torch.device(f'cuda:{gpu_id}')
+        return feature.to(device), label.to(device)
 
 def checkpoint(model, epoch, save_path, run: Run):
     if not os.path.exists(save_path):
@@ -132,6 +134,9 @@ def train(CFG: omegaconf.dictconfig.DictConfig):
     run = Run(experiment="drc_centralized_train")
     run['hparams'] = CFG
 
+    if CFG.get('seed') is not None:
+        set_random_seed(CFG.seed)
+
     if not os.path.exists(CFG.save_path):
         os.makedirs(CFG.save_path)
 
@@ -157,8 +162,11 @@ def train(CFG: omegaconf.dictconfig.DictConfig):
 
     # Set Device
     if not CFG.get('cpu', False):
-        torch.cuda.set_device(CFG.get('gpu', 0))
-        model = model.cuda()
+        gpu_id = CFG.get('gpu', 0)
+        print(f"===> Using GPU: {gpu_id}")
+        torch.cuda.set_device(gpu_id)
+        device = torch.device(f'cuda:{gpu_id}')
+        model = model.to(device)
     
     # Build loss
     loss = build_loss(CFG)

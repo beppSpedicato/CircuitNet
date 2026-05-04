@@ -23,3 +23,5 @@ feature_extraction/LEF/circuitnet.lef
 **/work_dirs/
 **/.aim/
 **/multirun/
+
+drc_prediction/outputs/

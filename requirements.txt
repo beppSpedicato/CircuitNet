@@ -28,3 +28,6 @@ yapf==0.32.0
 
 aim==3.19.2
 hydra-core==1.3.2
+
+pandas
+typing_extensions

@@ -160,6 +160,7 @@ class RouteNet(nn.Module):
 
     def init_weights(self, pretrained=None, strict=True, **kwargs):
         if isinstance(pretrained, str):
+            print (f'===> Loading pretrained model from {pretrained}')
             new_dict = OrderedDict()
             weight = torch.load(pretrained, map_location='cpu')['state_dict']
             for k in weight.keys():

@@ -77,9 +77,19 @@ def test(CFG):
 
     # eval roc&prc
     if CFG['plot_roc']:
-        roc_metric, _ = build_roc_prc_metric(**CFG)
+        roc_metric, prc_numerator, tpr, fpr, precision, accuracy = build_roc_prc_metric(**CFG)
         print("\n===> AUC of ROC. {:.4f}".format(roc_metric))
+        print("===> TPR: {:.4f}".format(sum(tpr)/len(tpr)))
+        print("===> FPR: {:.4f}".format((sum(fpr)/len(fpr))))
+        print("===> Precision: {:.4f}".format(precision))
+        print("===> Accuracy: {:.4f}".format(accuracy))
+        print("===> PRC numerator: {:.4f}".format(prc_numerator))
+        for i in range(len(tpr)):
+            run.track(tpr[i], name='ROC_TPR', step=i, context={'type': 'curve'})
+        for i in range(len(fpr)):
+            run.track(fpr[i], name='ROC_FPR', step=i, context={'type': 'curve'})
 
+        print(len(tpr), len(fpr))
 
 if __name__ == "__main__":
     test()

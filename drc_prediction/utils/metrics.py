@@ -2,7 +2,6 @@
 
 from functools import wraps
 from inspect import getfullargspec
-
 import os
 import os.path as osp
 import pathlib
@@ -18,7 +17,6 @@ import csv
 from sklearn.metrics import accuracy_score, roc_curve, confusion_matrix
 from scipy.interpolate import make_interp_spline
 from functools import partial
-
 from scipy.stats import wasserstein_distance
 from skimage.metrics import normalized_root_mse
 import math
@@ -31,7 +29,6 @@ def mkdir_or_exist(dir_name, mode=0o777):
         return
     dir_name = osp.expanduser(dir_name)
     os.makedirs(dir_name, mode=mode, exist_ok=True)
-
 
 def input_converter(apply_to=None):
     def input_converter_wrapper(old_func):
@@ -53,7 +50,6 @@ def input_converter(apply_to=None):
 
     return input_converter_wrapper
 
-
 @input_converter(apply_to=('img1', 'img2'))
 def psnr(img1, img2, crop_border=0):
     assert img1.shape == img2.shape, (
@@ -68,7 +64,6 @@ def psnr(img1, img2, crop_border=0):
     if mse_value == 0:
         return float('inf')
     return 20. * np.log10(255. / np.sqrt(mse_value))
-
 
 def _ssim(img1, img2):
     C1 = (0.01 * 255)**2
@@ -93,7 +88,6 @@ def _ssim(img1, img2):
                                        (sigma1_sq + sigma2_sq + C2))
     return ssim_map.mean()
 
-
 @input_converter(apply_to=('img1', 'img2'))
 def ssim(img1, img2, crop_border=0):
     assert img1.shape == img2.shape, (
@@ -106,7 +100,6 @@ def ssim(img1, img2, crop_border=0):
     for i in range(img1.shape[2]):
         ssims.append(_ssim(img1[..., i], img2[..., i]))
     return np.array(ssims).mean()
-
 
 @input_converter(apply_to=('img1', 'img2'))
 def nrms(img1, img2, crop_border=0):
@@ -122,8 +115,6 @@ def nrms(img1, img2, crop_border=0):
         return 0.05
     return nrmse_value
 
-
-
 def get_histogram(img):
     h, w = img.shape
     hist = [0.0] * 256
@@ -131,7 +122,6 @@ def get_histogram(img):
         for j in range(w):
             hist[img[i, j]] += 1
     return np.array(hist) / float(h * w)
-
 
 def normalize_exposure(img):
     img = img.astype(int)
@@ -144,7 +134,6 @@ def normalize_exposure(img):
         for j in range(0, width):
             normalized[i, j] = sk[img[i, j]]
     return normalized.astype(int)
-
 
 @input_converter(apply_to=('img1', 'img2'))
 def emd(img1, img2, crop_border=0):
@@ -173,15 +162,20 @@ def fpr(fp, tn):
 def precision(tp, fp):
     return tp/(tp+fp)
 
+def accuracy(tp, tn, fp, fn):
+    return (tp+tn)/(tp+tn+fp+fn)
+
 def calculate_all(csv_path):
     tpr_sum_List = []
     fpr_sum_List = []
     precision_sum_List = []
+    accuracy_sum_List = []
     threshold_remain_list = []
     num = 0
     tpr_sum = 0
     fpr_sum = 0 
     precision_sum = 0
+    accuracy_sum = 0
 
     csv_file = open(os.path.join(csv_path), 'r')
 
@@ -194,10 +188,12 @@ def calculate_all(csv_path):
                     tpr_sum_List.append(tpr_sum/num)
                     fpr_sum_List.append(fpr_sum/num)
                     precision_sum_List.append(precision_sum/num)
+                    accuracy_sum_List.append(accuracy_sum/num)
             threshold_remain_list.append(threshold)
             tpr_sum = 0
             fpr_sum = 0
             precision_sum = 0
+            accuracy_sum = 0
             num = 0
             first_flag = True
 
@@ -211,15 +207,14 @@ def calculate_all(csv_path):
             tpr_sum += tpr(int(tp), int(fn))
             fpr_sum += fpr(int(fp), int(tn))
             precision_sum += precision(int(tp), int(fp))
+            accuracy_sum += accuracy(int(tp), int(tn), int(fp), int(fn))
             num += 1
     if num !=0:
         tpr_sum_List.append(tpr_sum/num)
         fpr_sum_List.append(fpr_sum/num)
         precision_sum_List.append(precision_sum/num)
-        
-
-    return tpr_sum_List, fpr_sum_List, precision_sum_List
-
+        accuracy_sum_List.append(accuracy_sum/num)
+    return tpr_sum_List, fpr_sum_List, precision_sum_List, accuracy_sum_List
 
 def calculated_score(threshold_idx=None, 
                      temp_path=None, 
@@ -261,10 +256,7 @@ def multi_process_score(out_name=None, threshold=0.0, label_path=None, save_path
 
     psutil.cpu_percent(None)
     time.sleep(0.5)
-    # sys.exit(0)
     pool = mul.Pool(int(mul.cpu_count()*(1-psutil.cpu_percent(None)/100.0)))
-    # pool = mul.Pool(1)
-
     preds = [str(p).split('/')[-1] for p in pathlib.Path(save_path, "test_result").rglob("*.npy")]  
     preds = [v for v in preds]
 
@@ -284,12 +276,6 @@ def multi_process_score(out_name=None, threshold=0.0, label_path=None, save_path
         with open(os.path.join(temp_path, f'{out_name}'), 'a') as f:
             f.write(fr)
         f.close()
-
-    # if not os.path.exists(os.path.join(os.getcwd(), 'out')):
-    #     os.makedirs(os.path.join(os.getcwd(), 'out'))
-
-    # print('copying')
-    # os.system('cp {} {}'.format(os.path.join(temp_path, f'{out_name}'), os.path.join(os.path.join(os.getcwd(), 'out'), f'{out_name}')))
 
     print('copying')
     os.system('cp {} {}'.format(os.path.join(temp_path, f'{out_name}'), os.path.join(os.path.join(os.getcwd(), save_path), f'{out_name}')))
@@ -312,7 +298,7 @@ def get_sorted_list(fpr_sum_List,tpr_sum_List):
 
 
 def roc_prc(save_path):
-    tpr_sum_List, fpr_sum_List, precision_sum_List = calculate_all(os.path.join(os.getcwd(), save_path, 'roc_prc.csv'))
+    tpr_sum_List, fpr_sum_List, precision_sum_List, accuracy_sum_List = calculate_all(os.path.join(os.getcwd(), save_path, 'roc_prc.csv'))
 
     fpr_list, tpr_list = get_sorted_list(fpr_sum_List,tpr_sum_List)
     fpr_list = list(fpr_list)
@@ -324,7 +310,8 @@ def roc_prc(save_path):
     roc_numerator = 0
     for i in range(len(tpr_list)-1):
         roc_numerator += (tpr_list[i]+tpr_list[i+1])*(fpr_list[i+1]-fpr_list[i])/2
-
+        
+    tpr_list_res = tpr_list.copy()
     tpr_list, p_list = get_sorted_list(tpr_sum_List, precision_sum_List)
     x_smooth = np.linspace(0, 1, 25)
     y_smooth = make_interp_spline(tpr_list, p_list, k=3)(x_smooth)
@@ -333,7 +320,7 @@ def roc_prc(save_path):
     for i in range(len(y_smooth)-1):
         prc_numerator += (y_smooth[i]+y_smooth[i+1])*(x_smooth[i+1]-x_smooth[i])/2
 
-    return roc_numerator, prc_numerator
+    return roc_numerator, prc_numerator, tpr_list_res, fpr_list, np.mean(precision_sum_List), np.mean(accuracy_sum_List)
 
 
 
