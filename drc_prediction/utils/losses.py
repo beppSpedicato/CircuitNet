@@ -2,6 +2,7 @@
 
 import functools
 
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -9,9 +10,18 @@ import utils.losses as losses
 
 
 def build_loss(opt):
-    return losses.__dict__[opt.pop('loss_type')]()
+    loss_type = opt.pop('loss_type')
+    if loss_type == 'BiasedMSELoss':
+        return losses.__dict__[loss_type](
+            s=float(opt.get('biased_loss_s', 1.0)),
+            b=float(opt.get('biased_loss_b', 0.0)),
+            loss_weight=float(opt.get('loss_weight', 100.0)),
+            reduction=opt.get('reduction', 'mean'),
+            sample_wise=bool(opt.get('sample_wise', False)),
+        )
+    return losses.__dict__[loss_type]()
 
-__all__ = ['L1Loss', 'MSELoss']
+__all__ = ['L1Loss', 'MSELoss', 'BiasedMSELoss']
 
 
 def reduce_loss(loss, reduction):
@@ -101,4 +111,24 @@ class MSELoss(nn.Module):
             weight,
             reduction=self.reduction,
             sample_wise=self.sample_wise
+        )
+
+
+class BiasedMSELoss(nn.Module):
+    def __init__(self, s=1.0, b=0.0, loss_weight=100.0, reduction='mean', sample_wise=False):
+        super().__init__()
+        self.s = s
+        self.b = b
+        self.loss_weight = loss_weight
+        self.reduction = reduction
+        self.sample_wise = sample_wise
+
+    def forward(self, pred, target, weight=None, **kwargs):
+        bias_weight = 1.0 / (1.0 + torch.exp(self.s * (self.b - target)))
+        return self.loss_weight * mse_loss(
+            pred,
+            target,
+            weight=bias_weight if weight is None else weight * bias_weight,
+            reduction=self.reduction,
+            sample_wise=self.sample_wise,
         )
