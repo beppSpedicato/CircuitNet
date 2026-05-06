@@ -301,6 +301,7 @@ def roc_prc(save_path):
     tpr_sum_List, fpr_sum_List, precision_sum_List, accuracy_sum_List = calculate_all(os.path.join(os.getcwd(), save_path, 'roc_prc.csv'))
 
     fpr_list, tpr_list = get_sorted_list(fpr_sum_List,tpr_sum_List)
+
     fpr_list = list(fpr_list)
     fpr_list.extend([1])
 
@@ -313,8 +314,12 @@ def roc_prc(save_path):
         
     tpr_list_res = tpr_list.copy()
     tpr_list, p_list = get_sorted_list(tpr_sum_List, precision_sum_List)
+
+    k = min(3, len(tpr_list) - 1)
     x_smooth = np.linspace(0, 1, 25)
-    y_smooth = make_interp_spline(tpr_list, p_list, k=3)(x_smooth)
+    y_smooth = make_interp_spline(tpr_list, p_list, k=k)(x_smooth)
+
+    print(x_smooth, y_smooth)
 
     prc_numerator = 0
     for i in range(len(y_smooth)-1):

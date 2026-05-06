@@ -39,7 +39,7 @@ def test(CFG):
     metrics = {k:build_metric(k) for k in CFG['eval_metric']}
     avg_metrics = {k:0 for k in CFG['eval_metric']}
 
-    count =0
+    count = 0
     with tqdm(total=len(dataset)) as bar:
         for feature, label, label_path in dataset:
             if CFG.get('cpu', False):
@@ -73,7 +73,7 @@ def test(CFG):
             bar.update(1)
     
     for metric, avg_metric in avg_metrics.items():
-        print("===> Avg. {}: {:.4f}".format(metric, avg_metric / len(dataset))) 
+        print("===> Avg. {}: {:.4f}".format(metric, avg_metric / len(dataset)))
 
     # eval roc&prc
     if CFG['plot_roc']:
@@ -84,12 +84,13 @@ def test(CFG):
         print("===> Precision: {:.4f}".format(precision))
         print("===> Accuracy: {:.4f}".format(accuracy))
         print("===> PRC numerator: {:.4f}".format(prc_numerator))
+
+        run.track(accuracy, name='Test Accuracy', context={'subset': 'test'})
+
         for i in range(len(tpr)):
             run.track(tpr[i], name='ROC_TPR', step=i, context={'type': 'curve'})
         for i in range(len(fpr)):
             run.track(fpr[i], name='ROC_FPR', step=i, context={'type': 'curve'})
-
-        print(len(tpr), len(fpr))
 
 if __name__ == "__main__":
     test()
