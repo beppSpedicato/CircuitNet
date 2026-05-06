@@ -11,8 +11,9 @@ out_channels: 1
 lr: 0.0002
 weight_decay: 0.0001
 loss_type: BiasedMSELoss
-biased_loss_s: 20
-biased_loss_b: 0.4
+# Keep b aligned with the evaluation label threshold for DRC.
+biased_loss_s: 5
+biased_loss_b: 0.1
 threshold: 0.1
 eval_metric:
 - NRMS
