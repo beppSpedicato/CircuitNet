@@ -1,6 +1,6 @@
 gpu: 1
 dataroot: ./training_set/DRC
-save_path: ./work_dirs/RouteNet_N28_expanded_metrics
+save_path: ./work_dirs/RouteNet_N28_biased_loss
 max_iters: 15000
 ann_file_train: ./files/train_N28_train.csv
 ann_file_val: ./files/train_N28_val.csv
@@ -22,3 +22,4 @@ eval_freq_epochs: 1
 ann_file_test: ./files/test_N28.csv
 plot_roc: true
 seed: 0
+pretrained: ./work_dirs/RouteNet_N28_biased_loss/model_iters_15000.pth

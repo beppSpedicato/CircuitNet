@@ -4,7 +4,7 @@
 set -e
 
 # Array of configuration IDs
-CONFIGS=(1 2 3 4 5)
+CONFIGS=(5)
 
 echo "Starting sequential execution of 5 DRC Prediction configurations..."
 echo "Logs will be recorded by Aim."
@@ -16,7 +16,7 @@ for ID in "${CONFIGS[@]}"; do
     echo "--> Training Config ${ID}"
     # python train.py --config-name="drc_train_${ID}"
 
-    sleep 2  # Add a short pause between training and testing
+    sleep 20  # Add a short pause between training and testing
     
     echo "--> Testing Config ${ID}"
     python test.py --config-name="drc_test_${ID}"

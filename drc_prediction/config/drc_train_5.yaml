@@ -1,6 +1,6 @@
 gpu: 1
 dataroot: ./training_set/DRC
-save_path: ./work_dirs/RouteNet_N28_expanded_metrics
+save_path: ./work_dirs/RouteNet_N28_biased_loss
 max_iters: 15000
 ann_file_train: ./files/train_N28_train.csv
 ann_file_val: ./files/train_N28_val.csv

@@ -184,7 +184,7 @@ def calculate_all(csv_path):
         threshold, idx, tn, fp, fn, tp = line.strip().split(',')
         if threshold not in threshold_remain_list:
             if first_flag:
-                if num !=0:
+                if num != 0:
                     tpr_sum_List.append(tpr_sum/num)
                     fpr_sum_List.append(fpr_sum/num)
                     precision_sum_List.append(precision_sum/num)
