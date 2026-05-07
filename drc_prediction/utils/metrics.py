@@ -319,8 +319,6 @@ def roc_prc(save_path):
     x_smooth = np.linspace(0, 1, 25)
     y_smooth = make_interp_spline(tpr_list, p_list, k=k)(x_smooth)
 
-    print(x_smooth, y_smooth)
-
     prc_numerator = 0
     for i in range(len(y_smooth)-1):
         prc_numerator += (y_smooth[i]+y_smooth[i+1])*(x_smooth[i+1]-x_smooth[i])/2
