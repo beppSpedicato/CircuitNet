@@ -22,7 +22,7 @@ from skimage.metrics import normalized_root_mse
 import math
 import utils.metrics as metrics
 
-__all__ = ['psnr', 'ssim', 'nrms', 'emd']
+__all__ = ['psnr', 'ssim', 'nrms', 'emd', 'confusion_counts']
 
 def mkdir_or_exist(dir_name, mode=0o777):
     if dir_name == '':
@@ -164,6 +164,28 @@ def precision(tp, fp):
 
 def accuracy(tp, tn, fp, fn):
     return (tp+tn)/(tp+tn+fp+fn)
+
+def confusion_counts(target, pred, threshold_label, threshold_pred):
+    """Compute aggregate TP/TN/FP/FN for a (flattened) batch.
+
+    Both ``target`` and ``pred`` are binarized with their own threshold
+    (mirrors ``calculated_score``), then counted with ``labels=[0, 1]`` so
+    the returned counts are always defined even when a class is absent.
+
+    Returns
+    -------
+    (tn, fp, fn, tp) : tuple of ints
+    """
+    target_bin = np.asarray(target).reshape(-1).copy()
+    target_bin[target_bin >= threshold_label] = 1
+    target_bin[target_bin < threshold_label] = 0
+
+    pred_bin = np.asarray(pred).reshape(-1).copy()
+    pred_bin[pred_bin >= threshold_pred] = 1
+    pred_bin[pred_bin < threshold_pred] = 0
+
+    tn, fp, fn, tp = confusion_matrix(target_bin, pred_bin, labels=[0, 1]).ravel()
+    return int(tn), int(fp), int(fn), int(tp)
 
 def calculate_all(csv_path):
     tpr_sum_List = []

@@ -11,7 +11,7 @@ import numpy as np
 from tqdm import tqdm
 from aim import Run
 from datasets.build_dataset import build_dataset
-from utils.metrics import build_metric, build_roc_prc_metric
+from utils.metrics import build_metric, build_roc_prc_metric, confusion_counts
 from models.build_model import build_model
 import torch
 
@@ -39,6 +39,10 @@ def test(CFG):
     metrics = {k:build_metric(k) for k in CFG['eval_metric']}
     avg_metrics = {k:0 for k in CFG['eval_metric']}
 
+    # Confusion matrix aggregation (one 2x2 CM per run, at CFG['threshold'])
+    cm_threshold = CFG.get('threshold', 0.1)
+    cm_total = {'TP': 0, 'TN': 0, 'FP': 0, 'FN': 0}
+
     count = 0
     with tqdm(total=len(dataset)) as bar:
         for feature, label, label_path in dataset:
@@ -48,6 +52,17 @@ def test(CFG):
                 input, target = feature.cuda(), label.cuda()
 
             prediction = model(input)
+            tn, fp, fn, tp = confusion_counts(
+                target.cpu().numpy(),
+                prediction.squeeze(1).cpu().numpy(),
+                threshold_label=cm_threshold,
+                threshold_pred=cm_threshold,
+            )
+            cm_total['TN'] += tn
+            cm_total['FP'] += fp
+            cm_total['FN'] += fn
+            cm_total['TP'] += tp
+
             for metric, metric_func in metrics.items():
                 metric_v = metric_func(target.cpu(), prediction.squeeze(1).cpu())
                 if metric_v != 1:
@@ -86,6 +101,9 @@ def test(CFG):
         print("===> PRC numerator: {:.4f}".format(prc_numerator))
 
         run.track(accuracy, name='Test Accuracy', context={'subset': 'test'})
+
+        for cm_name, cm_val in cm_total.items():
+            run.track(cm_val, name=f'Confusion {cm_name}', context={'subset': 'test'})
 
         for i in range(len(tpr)):
             run.track(tpr[i], name='ROC_TPR', step=i, context={'type': 'curve'})
