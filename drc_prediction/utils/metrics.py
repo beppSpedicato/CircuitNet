@@ -14,7 +14,7 @@ import uuid
 import psutil
 import time
 import csv
-from sklearn.metrics import accuracy_score, roc_curve, confusion_matrix
+from sklearn.metrics import confusion_matrix
 from scipy.interpolate import make_interp_spline
 from functools import partial
 from scipy.stats import wasserstein_distance
@@ -165,78 +165,110 @@ def precision(tp, fp):
 def accuracy(tp, tn, fp, fn):
     return (tp+tn)/(tp+tn+fp+fn)
 
-def confusion_counts(target, pred, threshold_label, threshold_pred):
-    """Compute aggregate TP/TN/FP/FN for a (flattened) batch.
-
-    Both ``target`` and ``pred`` are binarized with their own threshold
-    (mirrors ``calculated_score``), then counted with ``labels=[0, 1]`` so
-    the returned counts are always defined even when a class is absent.
-
-    Returns
-    -------
-    (tn, fp, fn, tp) : tuple of ints
-    """
-    target_bin = np.asarray(target).reshape(-1).copy()
-    target_bin[target_bin >= threshold_label] = 1
-    target_bin[target_bin < threshold_label] = 0
-
-    pred_bin = np.asarray(pred).reshape(-1).copy()
-    pred_bin[pred_bin >= threshold_pred] = 1
-    pred_bin[pred_bin < threshold_pred] = 0
-
-    tn, fp, fn, tp = confusion_matrix(target_bin, pred_bin, labels=[0, 1]).ravel()
-    return int(tn), int(fp), int(fn), int(tp)
-
 def calculate_all(csv_path):
     tpr_sum_List = []
     fpr_sum_List = []
     precision_sum_List = []
     accuracy_sum_List = []
+
+    # New lists for confusion matrix values
+    tp_list = []
+    tn_list = []
+    fp_list = []
+    fn_list = []
+
     threshold_remain_list = []
+
     num = 0
     tpr_sum = 0
-    fpr_sum = 0 
+    fpr_sum = 0
     precision_sum = 0
     accuracy_sum = 0
+
+    # Running confusion matrix totals
+    tp_sum = 0
+    tn_sum = 0
+    fp_sum = 0
+    fn_sum = 0
 
     csv_file = open(os.path.join(csv_path), 'r')
 
     first_flag = False
     for line in csv_file:
         threshold, idx, tn, fp, fn, tp = line.strip().split(',')
+
+        tn = int(tn)
+        fp = int(fp)
+        fn = int(fn)
+        tp = int(tp)
+
         if threshold not in threshold_remain_list:
-            if first_flag:
-                if num != 0:
-                    tpr_sum_List.append(tpr_sum/num)
-                    fpr_sum_List.append(fpr_sum/num)
-                    precision_sum_List.append(precision_sum/num)
-                    accuracy_sum_List.append(accuracy_sum/num)
+            if first_flag and num != 0:
+                tpr_sum_List.append(tpr_sum / num)
+                fpr_sum_List.append(fpr_sum / num)
+                precision_sum_List.append(precision_sum / num)
+                accuracy_sum_List.append(accuracy_sum / num)
+
+                tp_list.append(tp_sum)
+                tn_list.append(tn_sum)
+                fp_list.append(fp_sum)
+                fn_list.append(fn_sum)
+
             threshold_remain_list.append(threshold)
+
             tpr_sum = 0
             fpr_sum = 0
             precision_sum = 0
             accuracy_sum = 0
+
+            tp_sum = 0
+            tn_sum = 0
+            fp_sum = 0
+            fn_sum = 0
+
             num = 0
             first_flag = True
 
-        if int(fp)==0 and int(tn)==0:
+        if (fp == 0 and tn == 0) or \
+           (tp == 0 and fn == 0) or \
+           (tp == 0 and fp == 0):
             continue
-        elif int(tp)==0 and int(fn)==0:
-            continue
-        elif int(tp)==0 and int(fp)==0:
-            continue
-        else:
-            tpr_sum += tpr(int(tp), int(fn))
-            fpr_sum += fpr(int(fp), int(tn))
-            precision_sum += precision(int(tp), int(fp))
-            accuracy_sum += accuracy(int(tp), int(tn), int(fp), int(fn))
-            num += 1
-    if num !=0:
-        tpr_sum_List.append(tpr_sum/num)
-        fpr_sum_List.append(fpr_sum/num)
-        precision_sum_List.append(precision_sum/num)
-        accuracy_sum_List.append(accuracy_sum/num)
-    return tpr_sum_List, fpr_sum_List, precision_sum_List, accuracy_sum_List
+
+        tpr_sum += tpr(tp, fn)
+        fpr_sum += fpr(fp, tn)
+        precision_sum += precision(tp, fp)
+        accuracy_sum += accuracy(tp, tn, fp, fn)
+
+        tp_sum += tp
+        tn_sum += tn
+        fp_sum += fp
+        fn_sum += fn
+
+        num += 1
+
+    if num != 0:
+        tpr_sum_List.append(tpr_sum / num)
+        fpr_sum_List.append(fpr_sum / num)
+        precision_sum_List.append(precision_sum / num)
+        accuracy_sum_List.append(accuracy_sum / num)
+
+        tp_list.append(tp_sum)
+        tn_list.append(tn_sum)
+        fp_list.append(fp_sum)
+        fn_list.append(fn_sum)
+
+    csv_file.close()
+
+    return (
+        tpr_sum_List,
+        fpr_sum_List,
+        precision_sum_List,
+        accuracy_sum_List,
+        tp_list,
+        tn_list,
+        fp_list,
+        fn_list,
+    )
 
 def calculated_score(threshold_idx=None, 
                      temp_path=None, 
@@ -320,7 +352,7 @@ def get_sorted_list(fpr_sum_List,tpr_sum_List):
 
 
 def roc_prc(save_path):
-    tpr_sum_List, fpr_sum_List, precision_sum_List, accuracy_sum_List = calculate_all(os.path.join(os.getcwd(), save_path, 'roc_prc.csv'))
+    tpr_sum_List, fpr_sum_List, precision_sum_List, accuracy_sum_List, tp, tn, fp, fn = calculate_all(os.path.join(os.getcwd(), save_path, 'roc_prc.csv'))
 
     fpr_list, tpr_list = get_sorted_list(fpr_sum_List,tpr_sum_List)
 
@@ -345,7 +377,7 @@ def roc_prc(save_path):
     for i in range(len(y_smooth)-1):
         prc_numerator += (y_smooth[i]+y_smooth[i+1])*(x_smooth[i+1]-x_smooth[i])/2
 
-    return roc_numerator, prc_numerator, tpr_list_res, fpr_list, np.mean(precision_sum_List), np.mean(accuracy_sum_List)
+    return roc_numerator, prc_numerator, tpr_list_res, fpr_list, np.mean(precision_sum_List), np.mean(accuracy_sum_List), np.sum(tp), np.sum(tn), np.sum(fp), np.sum(fn)
 
 
 

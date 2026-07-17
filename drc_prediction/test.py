@@ -52,17 +52,6 @@ def test(CFG):
                 input, target = feature.cuda(), label.cuda()
 
             prediction = model(input)
-            tn, fp, fn, tp = confusion_counts(
-                target.cpu().numpy(),
-                prediction.squeeze(1).cpu().numpy(),
-                threshold_label=cm_threshold,
-                threshold_pred=cm_threshold,
-            )
-            cm_total['TN'] += tn
-            cm_total['FP'] += fp
-            cm_total['FN'] += fn
-            cm_total['TP'] += tp
-
             for metric, metric_func in metrics.items():
                 metric_v = metric_func(target.cpu(), prediction.squeeze(1).cpu())
                 if metric_v != 1:
@@ -92,18 +81,21 @@ def test(CFG):
 
     # eval roc&prc
     if CFG['plot_roc']:
-        roc_metric, prc_numerator, tpr, fpr, precision, accuracy = build_roc_prc_metric(**CFG)
+        roc_metric, prc_numerator, tpr, fpr, precision, accuracy, tp, tn, fp, fn = build_roc_prc_metric(**CFG)
         print("\n===> AUC of ROC. {:.4f}".format(roc_metric))
         print("===> TPR: {:.4f}".format(sum(tpr)/len(tpr)))
         print("===> FPR: {:.4f}".format((sum(fpr)/len(fpr))))
         print("===> Precision: {:.4f}".format(precision))
         print("===> Accuracy: {:.4f}".format(accuracy))
         print("===> PRC numerator: {:.4f}".format(prc_numerator))
+        print("===> TP: {}, TN: {}, FP: {}, FN: {}".format(tp, tn, fp, fn))
 
         run.track(accuracy, name='Test Accuracy', context={'subset': 'test'})
 
-        for cm_name, cm_val in cm_total.items():
-            run.track(cm_val, name=f'Confusion {cm_name}', context={'subset': 'test'})
+        run.track(tp, name='Confusion TP', context={'subset': 'test'})
+        run.track(tn, name='Confusion TN', context={'subset': 'test'})
+        run.track(fp, name='Confusion FP', context={'subset': 'test'})
+        run.track(fn, name='Confusion FN', context={'subset': 'test'})
 
         for i in range(len(tpr)):
             run.track(tpr[i], name='ROC_TPR', step=i, context={'type': 'curve'})
