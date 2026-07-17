@@ -1,0 +1,25 @@
+gpu: 1
+dataroot: ./training_set/DRC
+save_path: ./work_dirs/tune_th_50
+max_iters: 15000
+ann_file_train: ./files/train_N28_train.csv
+ann_file_val: ./files/train_N28_val.csv
+model_type: RouteNet
+batch_size: 8
+in_channels: 9
+out_channels: 1
+lr: 0.0002
+weight_decay: 0.0001
+loss_type: BiasedMSELoss
+# Keep b aligned with the evaluation label threshold for DRC.
+biased_loss_s: 5
+biased_loss_b: 0.1
+threshold: 0.5
+eval_metric:
+- NRMS
+- SSIM
+save_freq: 5000
+eval_freq_epochs: 1
+ann_file_test: ./files/test_N28.csv
+plot_roc: true
+seed: 0
