@@ -4,7 +4,7 @@
 set -e
 
 # Array of configuration IDs
-CONFIGS=(1 2 3 4 5)
+CONFIGS=(1 2 3 4 5 'baseline' 'final')
 
 echo "Starting sequential execution of 5 DRC Prediction configurations..."
 echo "Logs will be recorded by Aim."

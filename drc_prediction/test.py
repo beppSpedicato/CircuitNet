@@ -11,11 +11,11 @@ import numpy as np
 from tqdm import tqdm
 from aim import Run
 from datasets.build_dataset import build_dataset
-from utils.metrics import build_metric, build_roc_prc_metric, confusion_counts
+from utils.metrics import build_metric, build_roc_prc_metric
 from models.build_model import build_model
 import torch
 
-@hydra.main(version_base=None, config_path="./config", config_name="drc_test")
+@hydra.main(version_base=None, config_path="./config/drc_th_tune", config_name="drc_test")
 def test(CFG):
     run = Run(experiment="drc_centralized_test")
     run['hparams'] = CFG

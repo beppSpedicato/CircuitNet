@@ -17,4 +17,4 @@ eval_metric:
 save_freq: 10000
 ann_file_test: ./files/test_N28.csv
 plot_roc: true
-pretrained: ./work_dirs/RouteNet_N28_baseline_30k/model_iters_30000.pth
+pretrained: ./work_dirs/RouteNet_N28_baseline/model_iters_15000.pth
