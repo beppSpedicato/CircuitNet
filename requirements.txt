@@ -31,3 +31,6 @@ hydra-core==1.3.2
 
 pandas
 typing_extensions
+
+matplotlib==3.7.5
+seaborn==0.13.2
