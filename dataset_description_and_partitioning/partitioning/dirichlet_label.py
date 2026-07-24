@@ -13,11 +13,19 @@ class DirichletLabelPartitioner(DatasetPartitioner):
     that class's samples allocated to each party.  Lower alpha → more skewed
     label distributions across parties.  alpha → ∞ recovers IID behavior.
 
+    For CircuitNet-N28 the correct label is the per-sample DRC violation
+    severity **tier** (0 = clean, 1 = low, 2 = medium, 3 = high) produced by
+    :class:`~partitioning.label_tier.LabelTierAssigner`.  The input DataFrame
+    must contain this column before calling :meth:`partition`.
+
     Args:
         n_partitions: Number of federated parties.
         alpha: Dirichlet concentration parameter.  Common choices: 0.1 (very
             skewed), 0.5 (moderately skewed), 100 (near-IID).
-        label_col: Column used as the class label.
+        label_col: Column used as the class label.  Defaults to ``"tier"``,
+            the four-class DRC violation severity.  Pass ``"design_name"``
+            only if you explicitly want design-identity skew instead of
+            label-distribution skew.
         min_samples_per_party: Minimum samples any party must receive.  Tiny
             Dirichlet draws are re-sampled until this floor is met.
         seed: Random seed.
@@ -27,7 +35,7 @@ class DirichletLabelPartitioner(DatasetPartitioner):
         self,
         n_partitions: int,
         alpha: float = 0.5,
-        label_col: str = "design_name",
+        label_col: str = "tier",
         min_samples_per_party: int = 1,
         seed: int = 42,
     ) -> None:

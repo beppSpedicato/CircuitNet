@@ -13,12 +13,19 @@ class QuantityLabelPartitioner(DatasetPartitioner):
     samples are split equally among the parties that own that class.  The
     assignment guarantees no sample overlap across parties.
 
+    For CircuitNet-N28 the correct label is the per-sample DRC violation
+    severity **tier** (0 = clean, 1 = low, 2 = medium, 3 = high) produced by
+    :class:`~partitioning.label_tier.LabelTierAssigner`.  The input DataFrame
+    must contain this column before calling :meth:`partition`.
+
     Args:
         n_partitions: Number of federated parties.
         n_labels_per_party: How many distinct label values each party owns.
             Must satisfy 1 <= n_labels_per_party <= n_unique_labels.
-        label_col: Column used as the class label.  Defaults to
-            ``"design_name"``, the six base RTL designs in CircuitNet-N28.
+        label_col: Column used as the class label.  Defaults to ``"tier"``,
+            the four-class DRC violation severity.  Pass ``"design_name"``
+            only if you explicitly want design-identity skew instead of
+            label-distribution skew.
         seed: Random seed for reproducible assignment.
     """
 
@@ -26,7 +33,7 @@ class QuantityLabelPartitioner(DatasetPartitioner):
         self,
         n_partitions: int,
         n_labels_per_party: int = 2,
-        label_col: str = "design_name",
+        label_col: str = "tier",
         seed: int = 42,
     ) -> None:
         super().__init__(n_partitions)
