@@ -25,3 +25,7 @@ feature_extraction/LEF/circuitnet.lef
 **/multirun/
 
 drc_prediction/outputs/
+
+
+training_set_N14/
+data/
