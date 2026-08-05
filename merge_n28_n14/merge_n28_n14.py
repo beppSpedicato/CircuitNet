@@ -18,15 +18,15 @@ import pandas as pd
 # ---------------------------------------------------------------------------
 # 1. Setup (config variables)
 # ---------------------------------------------------------------------------
-N28_CSV_FILE_TRAIN = "../drc_prediction/files/train_N28.csv"
-N28_CSV_FILE_TEST  = "../drc_prediction/files/test_N28.csv"
-N14_CSV_FILE_TRAIN = "../drc_prediction/files/train_N14.csv"
-N14_CSV_FILE_TEST  = "../drc_prediction/files/test_N14.csv"
+N28_CSV_FILE_TRAIN = "../routability_ir_drop_prediction/files/train_N28.csv"
+N28_CSV_FILE_TEST  = "../routability_ir_drop_prediction/files/test_N28.csv"
+N14_CSV_FILE_TRAIN = "../routability_ir_drop_prediction/files/train_N14.csv"
+N14_CSV_FILE_TEST  = "../routability_ir_drop_prediction/files/test_N14.csv"
 
-N28_TRAINING_SET = "../drc_prediction/training_set/DRC"
-N14_TRAINING_SET = "../drc_prediction/training_set/DRC_N14"
+N28_TRAINING_SET = "../routability_ir_drop_prediction/training_set_N28/DRC"
+N14_TRAINING_SET = "../routability_ir_drop_prediction/training_set_N14/DRC"
 
-OUTPUT_FOLDER = "../drc_prediction/training_set/DRC_merged"
+OUTPUT_FOLDER = "../merge_n28_n14/training_set_merged/DRC"
 
 FEATURE_SUBDIR = "feature"
 LABEL_SUBDIR   = "label"
@@ -103,8 +103,11 @@ def merge_split(
 
     for _, row in combined.iterrows():
         src_root = N28_TRAINING_SET if row["source"] == "N28" else N14_TRAINING_SET
-        copy_pair(src_root, row["feature_path"], output_folder)
-        copy_pair(src_root, row["label_path"],   output_folder)
+        try:
+            copy_pair(src_root, row["feature_path"], output_folder)
+            copy_pair(src_root, row["label_path"],   output_folder)
+        except FileNotFoundError as e:
+            print(f"  [{split_name}] Error copying files for row {row.name}: {e}")
 
     return combined[["feature_path", "label_path"]]
 

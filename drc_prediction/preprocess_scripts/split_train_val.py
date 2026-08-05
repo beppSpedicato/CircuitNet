@@ -7,6 +7,8 @@ import random
 import re
 from collections import defaultdict
 
+from certifi.__main__ import args
+
 
 _GROUP_RE = re.compile(r"^(?P<prefix>.+?)-(?P<macros>\d+)-c")
 
@@ -19,18 +21,23 @@ def parse_args():
         )
     )
     p.add_argument(
+        "--dataset-path",
+        default=osp.join("..", "..", "merge_n28_n14", "training_set_merged", "DRC"),
+        help="Path to dataset root (contains feature/ and label/ subdirs).",
+    )
+    p.add_argument(
         "--input_csv",
-        default=osp.join("..", "files", "train_N28.csv"),
+        default=osp.join("..", "..", "merge_n28_n14", "files", "merged_train.csv"),
         help="Path to input CSV (feature_rel,label_rel).",
     )
     p.add_argument(
         "--output_train_csv",
-        default=osp.join("..", "files", "train_N28_train.csv"),
+        default=osp.join("..", "..", "merge_n28_n14", "files", "train_N14_train.csv"),
         help="Where to write the train split CSV.",
     )
     p.add_argument(
         "--output_val_csv",
-        default=osp.join("..", "files", "train_N28_val.csv"),
+        default=osp.join("..", "..", "merge_n28_n14", "files", "train_N14_val.csv"),
         help="Where to write the val split CSV.",
     )
     p.add_argument(
@@ -91,7 +98,7 @@ def _group_key_from_stem(stem: str, group_by: str) -> str:
     return design
 
 
-def read_pairs(csv_path: str):
+def read_pairs(csv_path: str, dataset_path: str):
     pairs = []
     with open(csv_path, "r") as f:
         for line in f:
@@ -99,7 +106,8 @@ def read_pairs(csv_path: str):
             if not line:
                 continue
             feat, lab = line.split(",")
-            pairs.append((feat, lab))
+            if os.path.exists(osp.join(dataset_path, feat)) and os.path.exists(osp.join(dataset_path, lab)):
+                pairs.append((feat, lab))
     return pairs
 
 
@@ -116,7 +124,7 @@ def main():
     if not (0.0 < args.val_ratio < 1.0):
         raise ValueError("--val_ratio must be in (0,1)")
 
-    pairs = read_pairs(args.input_csv)
+    pairs = read_pairs(args.input_csv, args.dataset_path)
 
     grouped = defaultdict(list)
     for feat, lab in pairs:
