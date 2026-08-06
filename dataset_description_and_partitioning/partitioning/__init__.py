@@ -6,6 +6,9 @@ from .dirichlet_label import DirichletLabelPartitioner
 from .noise_feature import NoiseFeaturePartitioner
 from .synthetic_feature import SyntheticFeaturePartitioner
 from .quantity_skew import QuantitySkewPartitioner
+from .hierarchical_persona import HierarchicalPersonaPartitioner
+from .feature_dirichlet import FeatureDirichletPartitioner
+from .kprototypes import KPrototypesPartitioner
 
 __all__ = [
     "DatasetPartitioner",
@@ -16,4 +19,7 @@ __all__ = [
     "NoiseFeaturePartitioner",
     "SyntheticFeaturePartitioner",
     "QuantitySkewPartitioner",
+    "HierarchicalPersonaPartitioner",
+    "FeatureDirichletPartitioner",
+    "KPrototypesPartitioner",
 ]
