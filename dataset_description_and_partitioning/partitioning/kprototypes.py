@@ -181,6 +181,19 @@ class KPrototypesPartitioner(DatasetPartitioner):
             blocks.append(block)
         return np.hstack(blocks)
 
+    def encode(self, df: pd.DataFrame) -> np.ndarray:
+        """Return the weighted encoded feature matrix without clustering.
+
+        Useful when sweeping k or comparing weight schemes: encode once,
+        then run sklearn.KMeans externally on the returned matrix. Populates
+        ``self.dropped_features_`` and ``self.encoded_matrix_`` as a side
+        effect.
+        """
+        specs = self._prepare_specs(df)
+        X = self._encode(df.reset_index(drop=True), specs)
+        self.encoded_matrix_ = X
+        return X
+
     def partition(self, df: pd.DataFrame) -> List[pd.DataFrame]:
         self._validate(df)
         df = df.copy().reset_index(drop=True)
