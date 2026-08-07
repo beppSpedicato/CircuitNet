@@ -31,3 +31,4 @@ drc_prediction/outputs/
 **/training_set_N28/
 data/
 **/training_set_merged/
+**/partition_outputs/
