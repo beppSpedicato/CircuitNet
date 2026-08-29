@@ -1,9 +1,8 @@
 gpu: 1
-dataroot: ./training_set/DRC
-save_path: ./work_dirs/RouteNet_N28_biased_loss_30k
+dataroot: ../routability_ir_drop_prediction/training_set_N28/DRC
+save_path: ./work_dirs/RouteNet_final_full_set
 max_iters: 30000
-ann_file_train: ./files/train_N28_train.csv
-ann_file_val: ./files/train_N28_val.csv
+ann_file_train: ./files/train_N28.csv
 model_type: RouteNet
 batch_size: 8
 in_channels: 9
@@ -22,4 +21,4 @@ eval_freq_epochs: 1
 ann_file_test: ./files/test_N28.csv
 plot_roc: true
 seed: 0
-pretrained: ./work_dirs/RouteNet_N28_biased_loss_30k/model_iters_30000.pth
+pretrained: ./work_dirs/RouteNet_final_full_set/model_iters_30000.pth

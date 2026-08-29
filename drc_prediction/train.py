@@ -151,9 +151,13 @@ def train(CFG: omegaconf.dictconfig.DictConfig):
 
     # Val loader (finite, deterministic)
     val_opt = dict(CFG)
-    val_opt['ann_file'] = CFG['ann_file_val']
-    val_opt['test_mode'] = True
-    val_loader = build_dataset(val_opt)
+    if CFG.get('ann_file_val', None) is not None:
+        val_opt['ann_file'] = CFG['ann_file_val']
+        val_opt['test_mode'] = True
+        val_loader = build_dataset(val_opt)
+    else:
+        val_loader = None
+        val_opt['test_mode'] = False
 
     print('===> Building model')
     # Initialize model parameters
@@ -231,7 +235,7 @@ def train(CFG: omegaconf.dictconfig.DictConfig):
         if iter_num % save_freq == 0:
             checkpoint(model, iter_num, CFG['save_path'], run)
 
-        if epoch % CFG.get('eval_freq_epochs', 1) == 0:
+        if epoch % CFG.get('eval_freq_epochs', 1) == 0 and val_loader is not None:
             val_loss, val_metrics = validate(model, loss, metrics, val_loader, CFG)
             run.track(
                 value=val_loss,
