@@ -398,7 +398,12 @@ def roc_prc(save_path, threshold=0.1):
     tp, tn, fp, fn = tp_list[i], tn_list[i], fp_list[i], fn_list[i]
     accuracy_at_threshold = accuracy(tp, tn, fp, fn)
 
-    return roc_numerator, prc_numerator, tpr_list_res, fpr_list, np.mean(precision_sum_List), accuracy_at_threshold, tp, tn, fp, fn
+    # Same pooled definition swept over every threshold, so the curve passes
+    # exactly through accuracy_at_threshold at index i.
+    accuracy_curve = [accuracy(a, b, c, d)
+                      for a, b, c, d in zip(tp_list, tn_list, fp_list, fn_list)]
+
+    return roc_numerator, prc_numerator, tpr_list_res, fpr_list, np.mean(precision_sum_List), accuracy_at_threshold, tp, tn, fp, fn, accuracy_curve, cm_thresholds
 
 
 

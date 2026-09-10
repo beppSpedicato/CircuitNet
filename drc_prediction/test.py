@@ -77,7 +77,7 @@ def test(CFG):
 
     # eval roc&prc
     if CFG['plot_roc']:
-        roc_metric, prc_numerator, tpr, fpr, precision, accuracy, tp, tn, fp, fn = build_roc_prc_metric(**CFG)
+        roc_metric, prc_numerator, tpr, fpr, precision, accuracy, tp, tn, fp, fn, accuracy_curve, acc_thresholds = build_roc_prc_metric(**CFG)
         print("\n===> AUC of ROC. {:.4f}".format(roc_metric))
         print("===> TPR: {:.4f}".format(sum(tpr)/len(tpr)))
         print("===> FPR: {:.4f}".format((sum(fpr)/len(fpr))))
@@ -98,6 +98,13 @@ def test(CFG):
             run.track(tpr[i], name='ROC_TPR', step=i, context={'type': 'curve'})
         for i in range(len(fpr)):
             run.track(fpr[i], name='ROC_FPR', step=i, context={'type': 'curve'})
+
+        # Accuracy sweep: one point per threshold, same (TP+TN)/total definition
+        # as the reported scalar. ACC_VALUE[i] is the accuracy the model would
+        # have if the decision threshold were ACC_THRESHOLD[i].
+        for i in range(len(accuracy_curve)):
+            run.track(accuracy_curve[i], name='ACC_VALUE', step=i, context={'type': 'curve'})
+            run.track(acc_thresholds[i], name='ACC_THRESHOLD', step=i, context={'type': 'curve'})
 
 if __name__ == "__main__":
     test()
