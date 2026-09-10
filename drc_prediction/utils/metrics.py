@@ -171,11 +171,12 @@ def calculate_all(csv_path):
     precision_sum_List = []
     accuracy_sum_List = []
 
-    # New lists for confusion matrix values
+    # New lists for confusion matrix values (one entry per threshold)
     tp_list = []
     tn_list = []
     fp_list = []
     fn_list = []
+    cm_thresholds = []
 
     threshold_remain_list = []
 
@@ -209,6 +210,10 @@ def calculate_all(csv_path):
                 precision_sum_List.append(precision_sum / num)
                 accuracy_sum_List.append(accuracy_sum / num)
 
+            # Confusion matrix totals are kept per threshold (not gated on num),
+            # so one entry always corresponds to one threshold.
+            if first_flag:
+                cm_thresholds.append(float(threshold_remain_list[-1]))
                 tp_list.append(tp_sum)
                 tn_list.append(tn_sum)
                 fp_list.append(fp_sum)
@@ -229,6 +234,14 @@ def calculate_all(csv_path):
             num = 0
             first_flag = True
 
+        # Every sample counts towards the confusion matrix. The filter below only
+        # guards the rate formulas against division by zero; it must not drop
+        # samples (e.g. clean layouts) from the confusion matrix itself.
+        tp_sum += tp
+        tn_sum += tn
+        fp_sum += fp
+        fn_sum += fn
+
         if (fp == 0 and tn == 0) or \
            (tp == 0 and fn == 0) or \
            (tp == 0 and fp == 0):
@@ -239,11 +252,6 @@ def calculate_all(csv_path):
         precision_sum += precision(tp, fp)
         accuracy_sum += accuracy(tp, tn, fp, fn)
 
-        tp_sum += tp
-        tn_sum += tn
-        fp_sum += fp
-        fn_sum += fn
-
         num += 1
 
     if num != 0:
@@ -252,6 +260,8 @@ def calculate_all(csv_path):
         precision_sum_List.append(precision_sum / num)
         accuracy_sum_List.append(accuracy_sum / num)
 
+    if threshold_remain_list:
+        cm_thresholds.append(float(threshold_remain_list[-1]))
         tp_list.append(tp_sum)
         tn_list.append(tn_sum)
         fp_list.append(fp_sum)
@@ -268,6 +278,7 @@ def calculate_all(csv_path):
         tn_list,
         fp_list,
         fn_list,
+        cm_thresholds,
     )
 
 def calculated_score(threshold_idx=None, 
@@ -351,8 +362,9 @@ def get_sorted_list(fpr_sum_List,tpr_sum_List):
     return fpr_list, tpr_list
 
 
-def roc_prc(save_path):
-    tpr_sum_List, fpr_sum_List, precision_sum_List, accuracy_sum_List, tp, tn, fp, fn = calculate_all(os.path.join(os.getcwd(), save_path, 'roc_prc.csv'))
+def roc_prc(save_path, threshold=0.1):
+    (tpr_sum_List, fpr_sum_List, precision_sum_List, accuracy_sum_List,
+     tp_list, tn_list, fp_list, fn_list, cm_thresholds) = calculate_all(os.path.join(os.getcwd(), save_path, 'roc_prc.csv'))
 
     fpr_list, tpr_list = get_sorted_list(fpr_sum_List,tpr_sum_List)
 
@@ -377,7 +389,16 @@ def roc_prc(save_path):
     for i in range(len(y_smooth)-1):
         prc_numerator += (y_smooth[i]+y_smooth[i+1])*(x_smooth[i+1]-x_smooth[i])/2
 
-    return roc_numerator, prc_numerator, tpr_list_res, fpr_list, np.mean(precision_sum_List), np.mean(accuracy_sum_List), np.sum(tp), np.sum(tn), np.sum(fp), np.sum(fn)
+    # Confusion matrix at a single operating point (predict a hotspot when the
+    # score is >= `threshold`). Summing over the 200 sweep thresholds counted every
+    # pixel once per threshold, so it was not a confusion matrix; likewise
+    # np.mean(accuracy_sum_List) averaged accuracy over the sweep and described the
+    # sweep rather than the model. Both are now read off the one matrix.
+    i = int(np.argmin(np.abs(np.array(cm_thresholds) - threshold)))
+    tp, tn, fp, fn = tp_list[i], tn_list[i], fp_list[i], fn_list[i]
+    accuracy_at_threshold = accuracy(tp, tn, fp, fn)
+
+    return roc_numerator, prc_numerator, tpr_list_res, fpr_list, np.mean(precision_sum_List), accuracy_at_threshold, tp, tn, fp, fn
 
 
 
@@ -434,4 +455,4 @@ def build_roc_prc_metric(threshold=None, dataroot=None, ann_file=None, save_path
     print(os.path.join(dataroot, label_name))
     multi_process_score(out_name='roc_prc.csv', threshold=threshold, label_path=os.path.join(dataroot, label_name), save_path=os.path.join('.', save_path))
     
-    return roc_prc(save_path)
+    return roc_prc(save_path, threshold=threshold)

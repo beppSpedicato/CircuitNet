@@ -39,10 +39,6 @@ def test(CFG):
     metrics = {k:build_metric(k) for k in CFG['eval_metric']}
     avg_metrics = {k:0 for k in CFG['eval_metric']}
 
-    # Confusion matrix aggregation (one 2x2 CM per run, at CFG['threshold'])
-    cm_threshold = CFG.get('threshold', 0.1)
-    cm_total = {'TP': 0, 'TN': 0, 'FP': 0, 'FN': 0}
-
     count = 0
     with tqdm(total=len(dataset)) as bar:
         for feature, label, label_path in dataset:
@@ -86,9 +82,10 @@ def test(CFG):
         print("===> TPR: {:.4f}".format(sum(tpr)/len(tpr)))
         print("===> FPR: {:.4f}".format((sum(fpr)/len(fpr))))
         print("===> Precision: {:.4f}".format(precision))
-        print("===> Accuracy: {:.4f}".format(accuracy))
+        print("===> Accuracy @ score>={}: {:.4f}".format(CFG['threshold'], accuracy))
         print("===> PRC numerator: {:.4f}".format(prc_numerator))
-        print("===> TP: {}, TN: {}, FP: {}, FN: {}".format(tp, tn, fp, fn))
+        print("===> Confusion matrix @ score>={} -- TP: {}, TN: {}, FP: {}, FN: {}".format(
+            CFG['threshold'], tp, tn, fp, fn))
 
         run.track(accuracy, name='Test Accuracy', context={'subset': 'test'})
 
