@@ -129,9 +129,9 @@ def validate(model, loss_fn, metrics, val_loader, CFG):
     return avg_loss, avg_metrics
 
 
-@hydra.main(version_base=None, config_path="./config", config_name="drc_train")
+@hydra.main(version_base=None, config_path="./config", config_name="drc_train_correct")
 def train(CFG: omegaconf.dictconfig.DictConfig):
-    run = Run(experiment="drc_centralized_train")
+    run = Run(experiment="drc_centralized_train_corrected")
     run['hparams'] = CFG
 
     if CFG.get('seed') is not None:

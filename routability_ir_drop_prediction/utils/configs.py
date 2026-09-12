@@ -39,9 +39,9 @@ class Parser(object):
             self.parser.add_argument('--eval-metric', default=['NRMS', 'SSIM', 'EMD'])
 
         elif self.parser.parse_args().task == 'drc_routenet':
-            self.parser.add_argument('--dataroot', default='./training_set/DRC')
-            self.parser.add_argument('--ann_file_train', default='./files/train_N14.csv')
-            self.parser.add_argument('--ann_file_test', default='./files/test_N14.csv')
+            self.parser.add_argument('--dataroot', default='./training_set_N28/DRC')
+            self.parser.add_argument('--ann_file_train', default='../drc_prediction/files/train_N28.csv')
+            self.parser.add_argument('--ann_file_test', default='../drc_prediction/files/test_N28.csv')
             self.parser.add_argument('--dataset_type', default='DRCDataset')
             self.parser.add_argument('--batch_size', default=8)
             self.parser.add_argument('--aug_pipeline', default=['Flip'])

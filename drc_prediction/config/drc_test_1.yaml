@@ -1,5 +1,5 @@
-gpu: 0
-dataroot: ./training_set/DRC
+gpu: 1
+dataroot: ../routability_ir_drop_prediction/training_set_N28/DRC
 save_path: ./work_dirs/RouteNet_N28_baseline
 max_iters: 15000
 ann_file_train: ./files/train_N28.csv
@@ -17,4 +17,4 @@ eval_metric:
 save_freq: 10000
 ann_file_test: ./files/test_N28.csv
 plot_roc: true
-pretrained: ./work_dirs/RouteNet_N28_baseline/model_iters_15000.pth
+pretrained: ./work_dirs/RouteNet_N28_baseline/model_iters_40000.pth

@@ -14,10 +14,11 @@ from datasets.build_dataset import build_dataset
 from utils.metrics import build_metric, build_roc_prc_metric
 from models.build_model import build_model
 import torch
+import pandas as pd
 
-@hydra.main(version_base=None, config_path="./config", config_name="drc_test")
+@hydra.main(version_base=None, config_path="./config", config_name="drc_test_correct")
 def test(CFG):
-    run = Run(experiment="drc_centralized_test")
+    run = Run(experiment="drc_centralized_test_corrected")
     run['hparams'] = CFG
     CFG = dict(CFG)
 
@@ -77,34 +78,43 @@ def test(CFG):
 
     # eval roc&prc
     if CFG['plot_roc']:
-        roc_metric, prc_numerator, tpr, fpr, precision, accuracy, tp, tn, fp, fn, accuracy_curve, acc_thresholds = build_roc_prc_metric(**CFG)
+        roc_metric, prc_numerator = build_roc_prc_metric(**CFG)
+        
+
+        csv_file = osp.join(CFG['save_path'], 'roc_prc.csv')
+        df = pd.read_csv(csv_file, header=None, names=["threshold", "id", "tn", "fp", "fn", "tp"])
+        t = df
+        no_negatives      = (t["fp"] == 0) & (t["tn"] == 0)
+        no_positives      = (t["tp"] == 0) & (t["fn"] == 0)
+        no_pred_positives = (t["tp"] == 0) & (t["fp"] == 0)
+        df = t[~(no_negatives | no_positives | no_pred_positives)]
+        df["pos"] = df["tp"] + df["fn"]
+        df["neg"] = df["fp"] + df["tn"]
+        valid = df[(df["pos"] > 0) & (df["neg"] > 0)].copy()
+        valid["tpr"] = valid["tp"] / valid["pos"]
+        valid["fpr"] = valid["fp"] / valid["neg"]
+        macro = valid.groupby("threshold")[["fpr", "tpr"]].mean()
+        df_filtered = valid[valid["threshold"] == 0.1].copy()
+        accuracy = (df_filtered['tp'].sum() + df_filtered['tn'].sum()) / (df_filtered['tp'].sum() + df_filtered['tn'].sum() + df_filtered['fp'].sum() + df_filtered['fn'].sum())
+        precision = df_filtered['tp'].sum() / (df_filtered['tp'].sum() + df_filtered['fp'].sum())
+
         print("\n===> AUC of ROC. {:.4f}".format(roc_metric))
-        print("===> TPR: {:.4f}".format(sum(tpr)/len(tpr)))
-        print("===> FPR: {:.4f}".format((sum(fpr)/len(fpr))))
         print("===> Precision: {:.4f}".format(precision))
-        print("===> Accuracy @ score>={}: {:.4f}".format(CFG['threshold'], accuracy))
+        print(f"===> Accuracy @ score>={CFG['threshold']}: {accuracy:.4f}")
         print("===> PRC numerator: {:.4f}".format(prc_numerator))
-        print("===> Confusion matrix @ score>={} -- TP: {}, TN: {}, FP: {}, FN: {}".format(
-            CFG['threshold'], tp, tn, fp, fn))
 
         run.track(accuracy, name='Test Accuracy', context={'subset': 'test'})
+        run.track(precision, name='Test Precision', context={'subset': 'test'})
+        run.track(df_filtered['tp'].sum(), name='Confusion TP', context={'subset': 'test'})
+        run.track(df_filtered['tn'].sum(), name='Confusion TN', context={'subset': 'test'})
+        run.track(df_filtered['fp'].sum(), name='Confusion FP', context={'subset': 'test'})
+        run.track(df_filtered['fn'].sum(), name='Confusion FN', context={'subset': 'test'})
 
-        run.track(tp, name='Confusion TP', context={'subset': 'test'})
-        run.track(tn, name='Confusion TN', context={'subset': 'test'})
-        run.track(fp, name='Confusion FP', context={'subset': 'test'})
-        run.track(fn, name='Confusion FN', context={'subset': 'test'})
+        for i in range(len(macro['tpr'])):
+            run.track(macro['tpr'].iloc[i], name='ROC_TPR', step=i, context={'type': 'curve'})
+        for i in range(len(macro['fpr'])):
+            run.track(macro['fpr'].iloc[i], name='ROC_FPR', step=i, context={'type': 'curve'})
 
-        for i in range(len(tpr)):
-            run.track(tpr[i], name='ROC_TPR', step=i, context={'type': 'curve'})
-        for i in range(len(fpr)):
-            run.track(fpr[i], name='ROC_FPR', step=i, context={'type': 'curve'})
-
-        # Accuracy sweep: one point per threshold, same (TP+TN)/total definition
-        # as the reported scalar. ACC_VALUE[i] is the accuracy the model would
-        # have if the decision threshold were ACC_THRESHOLD[i].
-        for i in range(len(accuracy_curve)):
-            run.track(accuracy_curve[i], name='ACC_VALUE', step=i, context={'type': 'curve'})
-            run.track(acc_thresholds[i], name='ACC_THRESHOLD', step=i, context={'type': 'curve'})
 
 if __name__ == "__main__":
     test()

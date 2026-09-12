@@ -12,6 +12,8 @@ from models.build_model import build_model
 from utils.configs import Parser
 from math import cos, pi
 import sys, os, subprocess
+import random
+import numpy as np
 
 
 def checkpoint(model, epoch, save_path):
@@ -166,4 +168,9 @@ def train():
 
 
 if __name__ == "__main__":
+    seed = 42
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
     train()

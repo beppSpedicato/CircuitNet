@@ -2,11 +2,9 @@
 
 from functools import wraps
 from inspect import getfullargspec
-
+import pathlib
 import os
 import os.path as osp
-import pathlib
-from zipfile import Path
 import cv2
 import numpy as np
 import torch
@@ -173,20 +171,15 @@ def fpr(fp, tn):
 def precision(tp, fp):
     return tp/(tp+fp)
 
-def accuracy(tp, tn, fp, fn):
-    return (tp+tn)/(tp+tn+fp+fn)
-
 def calculate_all(csv_path):
     tpr_sum_List = []
     fpr_sum_List = []
     precision_sum_List = []
-    accuracy_sum_List = []
     threshold_remain_list = []
     num = 0
     tpr_sum = 0
     fpr_sum = 0 
     precision_sum = 0
-    accuracy_sum = 0
 
     csv_file = open(os.path.join(csv_path), 'r')
 
@@ -199,12 +192,10 @@ def calculate_all(csv_path):
                     tpr_sum_List.append(tpr_sum/num)
                     fpr_sum_List.append(fpr_sum/num)
                     precision_sum_List.append(precision_sum/num)
-                    accuracy_sum_List.append(accuracy_sum/num)
             threshold_remain_list.append(threshold)
             tpr_sum = 0
             fpr_sum = 0
             precision_sum = 0
-            accuracy_sum = 0
             num = 0
             first_flag = True
 
@@ -218,15 +209,14 @@ def calculate_all(csv_path):
             tpr_sum += tpr(int(tp), int(fn))
             fpr_sum += fpr(int(fp), int(tn))
             precision_sum += precision(int(tp), int(fp))
-            accuracy_sum += accuracy(int(tp), int(tn), int(fp), int(fn))
             num += 1
     if num !=0:
         tpr_sum_List.append(tpr_sum/num)
         fpr_sum_List.append(fpr_sum/num)
         precision_sum_List.append(precision_sum/num)
-        accuracy_sum_List.append(accuracy_sum/num)
+        
 
-    return tpr_sum_List, fpr_sum_List, precision_sum_List, accuracy_sum_List
+    return tpr_sum_List, fpr_sum_List, precision_sum_List
 
 
 def calculated_score(threshold_idx=None, 
@@ -265,7 +255,7 @@ def calculated_score(threshold_idx=None,
 def multi_process_score(out_name=None, threshold=0.0, label_path=None, save_path=None):
     uid = str(uuid.uuid4())
     suid = ''.join(uid.split('-'))
-    temp_path = f'./work_dir/{suid}'
+    temp_path = f'./{suid}'
 
     psutil.cpu_percent(None)
     time.sleep(0.5)
@@ -273,11 +263,11 @@ def multi_process_score(out_name=None, threshold=0.0, label_path=None, save_path
     pool = mul.Pool(int(mul.cpu_count()*(1-psutil.cpu_percent(None)/100.0)))
     # pool = mul.Pool(1)
 
-    preds = [str(p).split('/')[-1] for p in pathlib.Path(save_path, "test_result").rglob("*.npy")]  
+    preds = [str(p).split('/')[-1] for p in pathlib.Path(save_path, "test_result").rglob("*.npy")] 
     preds = [v for v in preds]
 
     if not os.path.exists(temp_path):
-        os.makedirs(temp_path, exist_ok=True)
+        os.makedirs(temp_path)
 
     threshold_list = np.linspace(0, 1, endpoint=False, num=200)
     
@@ -320,7 +310,7 @@ def get_sorted_list(fpr_sum_List,tpr_sum_List):
 
 
 def roc_prc(save_path):
-    tpr_sum_List, fpr_sum_List, precision_sum_List, accuracy_sum_list = calculate_all(os.path.join(os.getcwd(), save_path, 'roc_prc.csv'))
+    tpr_sum_List, fpr_sum_List, precision_sum_List = calculate_all(os.path.join(os.getcwd(), save_path, 'roc_prc.csv'))
 
     fpr_list, tpr_list = get_sorted_list(fpr_sum_List,tpr_sum_List)
     fpr_list = list(fpr_list)
@@ -341,7 +331,7 @@ def roc_prc(save_path):
     for i in range(len(y_smooth)-1):
         prc_numerator += (y_smooth[i]+y_smooth[i+1])*(x_smooth[i+1]-x_smooth[i])/2
 
-    return roc_numerator, prc_numerator, tpr_sum_List / len(tpr_sum_List), fpr_sum_List / len(fpr_sum_List), precision_sum_List / len(precision_sum_List), accuracy_sum_list / len(accuracy_sum_list)
+    return roc_numerator, prc_numerator
 
 
 

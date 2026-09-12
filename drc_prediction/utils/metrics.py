@@ -2,10 +2,9 @@
 
 from functools import wraps
 from inspect import getfullargspec
+import pathlib
 import os
 import os.path as osp
-import pathlib
-from zipfile import Path
 import cv2
 import numpy as np
 import torch
@@ -14,21 +13,23 @@ import uuid
 import psutil
 import time
 import csv
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import accuracy_score, roc_curve, confusion_matrix
 from scipy.interpolate import make_interp_spline
 from functools import partial
+
 from scipy.stats import wasserstein_distance
 from skimage.metrics import normalized_root_mse
 import math
 import utils.metrics as metrics
 
-__all__ = ['psnr', 'ssim', 'nrms', 'emd', 'confusion_counts']
+__all__ = ['psnr', 'ssim', 'nrms', 'emd']
 
 def mkdir_or_exist(dir_name, mode=0o777):
     if dir_name == '':
         return
     dir_name = osp.expanduser(dir_name)
     os.makedirs(dir_name, mode=mode, exist_ok=True)
+
 
 def input_converter(apply_to=None):
     def input_converter_wrapper(old_func):
@@ -50,6 +51,7 @@ def input_converter(apply_to=None):
 
     return input_converter_wrapper
 
+
 @input_converter(apply_to=('img1', 'img2'))
 def psnr(img1, img2, crop_border=0):
     assert img1.shape == img2.shape, (
@@ -64,6 +66,7 @@ def psnr(img1, img2, crop_border=0):
     if mse_value == 0:
         return float('inf')
     return 20. * np.log10(255. / np.sqrt(mse_value))
+
 
 def _ssim(img1, img2):
     C1 = (0.01 * 255)**2
@@ -88,6 +91,7 @@ def _ssim(img1, img2):
                                        (sigma1_sq + sigma2_sq + C2))
     return ssim_map.mean()
 
+
 @input_converter(apply_to=('img1', 'img2'))
 def ssim(img1, img2, crop_border=0):
     assert img1.shape == img2.shape, (
@@ -100,6 +104,7 @@ def ssim(img1, img2, crop_border=0):
     for i in range(img1.shape[2]):
         ssims.append(_ssim(img1[..., i], img2[..., i]))
     return np.array(ssims).mean()
+
 
 @input_converter(apply_to=('img1', 'img2'))
 def nrms(img1, img2, crop_border=0):
@@ -115,6 +120,8 @@ def nrms(img1, img2, crop_border=0):
         return 0.05
     return nrmse_value
 
+
+
 def get_histogram(img):
     h, w = img.shape
     hist = [0.0] * 256
@@ -122,6 +129,7 @@ def get_histogram(img):
         for j in range(w):
             hist[img[i, j]] += 1
     return np.array(hist) / float(h * w)
+
 
 def normalize_exposure(img):
     img = img.astype(int)
@@ -134,6 +142,7 @@ def normalize_exposure(img):
         for j in range(0, width):
             normalized[i, j] = sk[img[i, j]]
     return normalized.astype(int)
+
 
 @input_converter(apply_to=('img1', 'img2'))
 def emd(img1, img2, crop_border=0):
@@ -162,124 +171,53 @@ def fpr(fp, tn):
 def precision(tp, fp):
     return tp/(tp+fp)
 
-def accuracy(tp, tn, fp, fn):
-    return (tp+tn)/(tp+tn+fp+fn)
-
 def calculate_all(csv_path):
     tpr_sum_List = []
     fpr_sum_List = []
     precision_sum_List = []
-    accuracy_sum_List = []
-
-    # New lists for confusion matrix values (one entry per threshold)
-    tp_list = []
-    tn_list = []
-    fp_list = []
-    fn_list = []
-    cm_thresholds = []
-
     threshold_remain_list = []
-
     num = 0
     tpr_sum = 0
-    fpr_sum = 0
+    fpr_sum = 0 
     precision_sum = 0
-    accuracy_sum = 0
-
-    # Running confusion matrix totals
-    tp_sum = 0
-    tn_sum = 0
-    fp_sum = 0
-    fn_sum = 0
 
     csv_file = open(os.path.join(csv_path), 'r')
 
     first_flag = False
     for line in csv_file:
         threshold, idx, tn, fp, fn, tp = line.strip().split(',')
-
-        tn = int(tn)
-        fp = int(fp)
-        fn = int(fn)
-        tp = int(tp)
-
         if threshold not in threshold_remain_list:
-            if first_flag and num != 0:
-                tpr_sum_List.append(tpr_sum / num)
-                fpr_sum_List.append(fpr_sum / num)
-                precision_sum_List.append(precision_sum / num)
-                accuracy_sum_List.append(accuracy_sum / num)
-
-            # Confusion matrix totals are kept per threshold (not gated on num),
-            # so one entry always corresponds to one threshold.
             if first_flag:
-                cm_thresholds.append(float(threshold_remain_list[-1]))
-                tp_list.append(tp_sum)
-                tn_list.append(tn_sum)
-                fp_list.append(fp_sum)
-                fn_list.append(fn_sum)
-
+                if num !=0:
+                    tpr_sum_List.append(tpr_sum/num)
+                    fpr_sum_List.append(fpr_sum/num)
+                    precision_sum_List.append(precision_sum/num)
             threshold_remain_list.append(threshold)
-
             tpr_sum = 0
             fpr_sum = 0
             precision_sum = 0
-            accuracy_sum = 0
-
-            tp_sum = 0
-            tn_sum = 0
-            fp_sum = 0
-            fn_sum = 0
-
             num = 0
             first_flag = True
 
-        # Every sample counts towards the confusion matrix. The filter below only
-        # guards the rate formulas against division by zero; it must not drop
-        # samples (e.g. clean layouts) from the confusion matrix itself.
-        tp_sum += tp
-        tn_sum += tn
-        fp_sum += fp
-        fn_sum += fn
-
-        if (fp == 0 and tn == 0) or \
-           (tp == 0 and fn == 0) or \
-           (tp == 0 and fp == 0):
+        if int(fp)==0 and int(tn)==0:
             continue
+        elif int(tp)==0 and int(fn)==0:
+            continue
+        elif int(tp)==0 and int(fp)==0:
+            continue
+        else:
+            tpr_sum += tpr(int(tp), int(fn))
+            fpr_sum += fpr(int(fp), int(tn))
+            precision_sum += precision(int(tp), int(fp))
+            num += 1
+    if num !=0:
+        tpr_sum_List.append(tpr_sum/num)
+        fpr_sum_List.append(fpr_sum/num)
+        precision_sum_List.append(precision_sum/num)
+        
 
-        tpr_sum += tpr(tp, fn)
-        fpr_sum += fpr(fp, tn)
-        precision_sum += precision(tp, fp)
-        accuracy_sum += accuracy(tp, tn, fp, fn)
+    return tpr_sum_List, fpr_sum_List, precision_sum_List
 
-        num += 1
-
-    if num != 0:
-        tpr_sum_List.append(tpr_sum / num)
-        fpr_sum_List.append(fpr_sum / num)
-        precision_sum_List.append(precision_sum / num)
-        accuracy_sum_List.append(accuracy_sum / num)
-
-    if threshold_remain_list:
-        cm_thresholds.append(float(threshold_remain_list[-1]))
-        tp_list.append(tp_sum)
-        tn_list.append(tn_sum)
-        fp_list.append(fp_sum)
-        fn_list.append(fn_sum)
-
-    csv_file.close()
-
-    return (
-        tpr_sum_List,
-        fpr_sum_List,
-        precision_sum_List,
-        accuracy_sum_List,
-        tp_list,
-        tn_list,
-        fp_list,
-        fn_list,
-        cm_thresholds,
-    )
 
 def calculated_score(threshold_idx=None, 
                      temp_path=None, 
@@ -317,16 +255,19 @@ def calculated_score(threshold_idx=None,
 def multi_process_score(out_name=None, threshold=0.0, label_path=None, save_path=None):
     uid = str(uuid.uuid4())
     suid = ''.join(uid.split('-'))
-    temp_path = f'./work_dir/{suid}'
+    temp_path = f'./{suid}'
 
     psutil.cpu_percent(None)
     time.sleep(0.5)
+    # sys.exit(0)
     pool = mul.Pool(int(mul.cpu_count()*(1-psutil.cpu_percent(None)/100.0)))
-    preds = [str(p).split('/')[-1] for p in pathlib.Path(save_path, "test_result").rglob("*.npy")]  
+    # pool = mul.Pool(1)
+
+    preds = [str(p).split('/')[-1] for p in pathlib.Path(save_path, "test_result").rglob("*.npy")] 
     preds = [v for v in preds]
 
     if not os.path.exists(temp_path):
-        os.makedirs(temp_path, exist_ok=True)
+        os.makedirs(temp_path)
 
     threshold_list = np.linspace(0, 1, endpoint=False, num=200)
     
@@ -341,6 +282,12 @@ def multi_process_score(out_name=None, threshold=0.0, label_path=None, save_path
         with open(os.path.join(temp_path, f'{out_name}'), 'a') as f:
             f.write(fr)
         f.close()
+
+    # if not os.path.exists(os.path.join(os.getcwd(), 'out')):
+    #     os.makedirs(os.path.join(os.getcwd(), 'out'))
+
+    # print('copying')
+    # os.system('cp {} {}'.format(os.path.join(temp_path, f'{out_name}'), os.path.join(os.path.join(os.getcwd(), 'out'), f'{out_name}')))
 
     print('copying')
     os.system('cp {} {}'.format(os.path.join(temp_path, f'{out_name}'), os.path.join(os.path.join(os.getcwd(), save_path), f'{out_name}')))
@@ -362,12 +309,10 @@ def get_sorted_list(fpr_sum_List,tpr_sum_List):
     return fpr_list, tpr_list
 
 
-def roc_prc(save_path, threshold=0.1):
-    (tpr_sum_List, fpr_sum_List, precision_sum_List, accuracy_sum_List,
-     tp_list, tn_list, fp_list, fn_list, cm_thresholds) = calculate_all(os.path.join(os.getcwd(), save_path, 'roc_prc.csv'))
+def roc_prc(save_path):
+    tpr_sum_List, fpr_sum_List, precision_sum_List = calculate_all(os.path.join(os.getcwd(), save_path, 'roc_prc.csv'))
 
     fpr_list, tpr_list = get_sorted_list(fpr_sum_List,tpr_sum_List)
-
     fpr_list = list(fpr_list)
     fpr_list.extend([1])
 
@@ -377,33 +322,16 @@ def roc_prc(save_path, threshold=0.1):
     roc_numerator = 0
     for i in range(len(tpr_list)-1):
         roc_numerator += (tpr_list[i]+tpr_list[i+1])*(fpr_list[i+1]-fpr_list[i])/2
-        
-    tpr_list_res = tpr_list.copy()
-    tpr_list, p_list = get_sorted_list(tpr_sum_List, precision_sum_List)
 
-    k = min(3, len(tpr_list) - 1)
+    tpr_list, p_list = get_sorted_list(tpr_sum_List, precision_sum_List)
     x_smooth = np.linspace(0, 1, 25)
-    y_smooth = make_interp_spline(tpr_list, p_list, k=k)(x_smooth)
+    y_smooth = make_interp_spline(tpr_list, p_list, k=3)(x_smooth)
 
     prc_numerator = 0
     for i in range(len(y_smooth)-1):
         prc_numerator += (y_smooth[i]+y_smooth[i+1])*(x_smooth[i+1]-x_smooth[i])/2
 
-    # Confusion matrix at a single operating point (predict a hotspot when the
-    # score is >= `threshold`). Summing over the 200 sweep thresholds counted every
-    # pixel once per threshold, so it was not a confusion matrix; likewise
-    # np.mean(accuracy_sum_List) averaged accuracy over the sweep and described the
-    # sweep rather than the model. Both are now read off the one matrix.
-    i = int(np.argmin(np.abs(np.array(cm_thresholds) - threshold)))
-    tp, tn, fp, fn = tp_list[i], tn_list[i], fp_list[i], fn_list[i]
-    accuracy_at_threshold = accuracy(tp, tn, fp, fn)
-
-    # Same pooled definition swept over every threshold, so the curve passes
-    # exactly through accuracy_at_threshold at index i.
-    accuracy_curve = [accuracy(a, b, c, d)
-                      for a, b, c, d in zip(tp_list, tn_list, fp_list, fn_list)]
-
-    return roc_numerator, prc_numerator, tpr_list_res, fpr_list, np.mean(precision_sum_List), accuracy_at_threshold, tp, tn, fp, fn, accuracy_curve, cm_thresholds
+    return roc_numerator, prc_numerator
 
 
 
@@ -460,4 +388,4 @@ def build_roc_prc_metric(threshold=None, dataroot=None, ann_file=None, save_path
     print(os.path.join(dataroot, label_name))
     multi_process_score(out_name='roc_prc.csv', threshold=threshold, label_path=os.path.join(dataroot, label_name), save_path=os.path.join('.', save_path))
     
-    return roc_prc(save_path, threshold=threshold)
+    return roc_prc(save_path)
