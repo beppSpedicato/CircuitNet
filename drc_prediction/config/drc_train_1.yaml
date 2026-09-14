@@ -1,7 +1,7 @@
 gpu: 1
 dataroot: ../routability_ir_drop_prediction/training_set_N28/DRC
 save_path: ./work_dirs/RouteNet_N28_baseline
-max_iters: 200000
+max_iters: 40000
 ann_file_train: ./files/train_N28.csv
 model_type: RouteNet
 batch_size: 8
