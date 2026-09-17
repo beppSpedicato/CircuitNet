@@ -4,7 +4,7 @@ save_path: ./work_dirs/RouteNet_N28_biased_loss_gn
 max_iters: 15000
 ann_file_train: ./files/train_N28_train.csv
 ann_file_val: ./files/train_N28_val.csv
-model_type: RouteNet
+model_type: RouteNetGroupNorm
 batch_size: 8
 in_channels: 9
 out_channels: 1
