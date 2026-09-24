@@ -21,6 +21,9 @@ for ID in "${CONFIGS[@]}"; do
     echo "--> Testing Config ${ID}"
     python test.py --config-name="drc_test_${ID}"
 
+    echo "--> Augmented metrics Config ${ID}"
+    python drc_augmented_metrics.py --config-name="drc_augmented_metrics_${ID}"
+
     echo "Configuration ${ID} completed successfully."
     echo ""
 done
